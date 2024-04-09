@@ -318,7 +318,7 @@ future = pd.date_range(start=start_timestamp,
 future_df = pd.DataFrame(index=future)
 future_df = future_df.set_index(future)
 future_df['isFuture'] = True
-df['isFuture'] = False
+df['isFuture'] = True
 df_and_future = pd.concat([df, future_df])
 df_and_future = create_features(df_and_future)
 df_and_future = add_lags(df_and_future)
@@ -326,17 +326,9 @@ df_and_future = add_lags(df_and_future)
 st.write(df_and_future.tail())
 
 st.subheader("Prediction")
-
 future_w_features = df_and_future.query('isFuture').copy()
 future_w_features['pred'] = reg.predict(future_w_features[FEATURES])
-if 'pred' in future_w_features.columns:
-    # Access the last element of the 'pred' column
-    predicted_price = future_w_features['pred'].iloc[-1]
-    # Display the predicted price
-    st.write(f"The predicted closing price: {predicted_price}")
-else:
-    st.write("No predictions available.")
-# st.write(future_w_features.head())
+st.write(future_w_features.head())
 
 
 # Comparing end of day price with current price
@@ -419,7 +411,6 @@ if response.status_code == 200:
     anchors = soup.find_all('a', class_='jsx-7411095eac133b06')
 
     # Iterate through each anchor tag
-    # Iterate through each anchor tag
     for anchor in anchors:
         # Check if the anchor tag has an h2 tag
         h2_tag = anchor.h2
@@ -436,7 +427,6 @@ if response.status_code == 200:
             print('Title:', title)
             print('URL:', url)
             print('--------------------')
-
 
     # Create a DataFrame
     data = {'Title': titles, 'URL': urls}
