@@ -450,7 +450,7 @@ def extract_div_content(url):
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Find all divs containing 'nart-para' in the class attribute
-        divs = soup.find_all('div', class_=lambda x: x and 'nart-para' in x)
+        divs = soup.find_all('div', class_=lambda x: x and 'narticle-data' in x)
 
         return [div.get_text(strip=True) for div in divs]
     except Exception as e:
