@@ -4,13 +4,17 @@ from bs4 import BeautifulSoup
 import bs4
 import pandas as pd
 import numpy as np
+import datetime
 import matplotlib.pyplot as plt
+import os
 import seaborn as sns
 import xgboost as xgb
+from xgboost import XGBRegressor
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import train_test_split
 import streamlit as st
 import requests
 from pyspark.sql import SparkSession
@@ -20,9 +24,12 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 import findspark
 findspark.init()
 
+
 nltk.download('vader_lexicon')
 color_pal = sns.color_palette()
 plt.style.use('fivethirtyeight')
+
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
 ticker_symbol = ""
 st.title("Stock Trend Prediction")
@@ -59,10 +66,90 @@ def get_id(name):
         return f"No results found for '{name}'"
 
 
-company_name = st.text_input("Enter the name of the company:", "JIO")
+# Function to read historical data for multiple stocks
+@st.cache_data
+def read_stock_data(directory):
+    stock_data = {}
+    for filename in os.listdir(directory):
+        if filename.endswith(".csv"):
+            stock_name = os.path.splitext(filename)[0]
+            df = pd.read_csv(os.path.join(directory, filename))
+            if 'datetime' in df.columns and 'close' in df.columns:
+                stock_data[stock_name] = df[['datetime', 'close']]
+    return stock_data
 
-# Button to trigger the API call
-if st.button("Get Stock Identifier"):
+def train_model(stock_data):
+    models = {}
+    for stock_name, df in stock_data.items():
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df['year'] = df['datetime'].dt.year
+        df['month'] = df['datetime'].dt.month
+        df['day'] = df['datetime'].dt.day
+            
+        X = df[['year', 'month', 'day']].values
+        y = df['close']
+            
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            
+        model = XGBRegressor()
+        model.fit(X_train, y_train)
+        models[stock_name] = model
+            
+    return models
+
+def predict_price(model, date):
+# Convert the date to a pandas datetime object
+    date = pd.to_datetime(date)
+        
+    # Extract year, month, and day from the date
+    year = date.year
+    month = date.month
+    day = date.day
+        
+    # Make prediction using the model
+    prediction = model.predict(np.array([[year, month, day]]))[0]
+        
+    return prediction
+
+
+# Read stock data from archive folder
+archive_folder = "archive"
+stock_data = read_stock_data(archive_folder)
+
+# Select a stock for visualization
+selected_stock = st.selectbox("Select a stock", list(stock_data.keys()))
+
+# Display historical stock price data
+if st.button("Get Stock Prediction"):
+    st.subheader("Historical Stock Price Data")
+    print(selected_stock)
+    st.write(stock_data[selected_stock])
+
+    # Plot historical stock prices
+    if selected_stock in stock_data:
+        df = stock_data[selected_stock]
+        df['Date'] = pd.to_datetime(df['datetime'])
+        plt.figure(figsize=(10, 6))
+        plt.plot(df['Date'], df['close'])
+        plt.xlabel("Date")
+        plt.ylabel("Closing Price")
+        plt.title(f"{selected_stock} Historical Stock Prices")
+        st.pyplot()
+
+    models = train_model(stock_data)
+        
+    today_date = datetime.date.today()
+
+        # Predict stock price for today's EOD
+    prediction = predict_price(models[selected_stock], today_date)
+
+        # Display the predicted price
+    st.subheader("Predicted Stock Price for Today's EOD")
+    st.write(f"The predicted closing price for {selected_stock} on {today_date} is {prediction:.2f} based on Historical Data")
+
+    company_name = selected_stock
+
+    # Button to trigger the API call
     if company_name:
         ticker_symbol = get_id(company_name)
         st.write(
@@ -141,37 +228,6 @@ if st.button("Get Stock Identifier"):
     # Display the plot in Streamlit
     st.pyplot(fig)
 
-
-    # # Cross-Validation of Train and Test
-    # st.subheader("Cross-Validation")
-
-    # tss = TimeSeriesSplit(n_splits=5, test_size=60, gap=5)
-    # fig, axs = plt.subplots(5, 1, figsize=(15, 15), sharex=True)
-
-    # fold = 0
-    # for train_idx, val_idx in tss.split(df):
-    #     train = df.iloc[train_idx]
-    #     test = df.iloc[val_idx]
-
-    #     # Plot training set
-    #     train['price'].plot(ax=axs[fold], label='Training Set',
-    #                         title=f'Data Train/Test Split Fold {fold}')
-
-    #     # Plot test set
-    #     test['price'].plot(ax=axs[fold], label='Test Set')
-
-    #     # Adjusted axvline position for better visibility
-    #     axs[fold].axvline(train.index.max(), color='black',
-    #                       ls='--', label='Train-Test Split')
-
-    #     fold += 1
-
-    # # Display the plot
-    # st.pyplot(fig)
-
-
-    # Feature Creation
-    # Creating columns for hour,minutes,seconds
 
     def create_features(df):
         """
@@ -355,7 +411,7 @@ if st.button("Get Stock Identifier"):
         # Display the results in Streamlit
         st.write(
             f"The end of day predicted price: {predicted_price}, current price: {current_price}")
-        st.write(f"Hence the current action: {action}")
+        #st.write(f"Hence the current action: {action}")
     else:
         st.write(f"No matching row found for Timestamp={value_to_compare}")
 
@@ -477,6 +533,7 @@ if st.button("Get Stock Identifier"):
                         header=True, inferSchema=True)
 
 
+
     def analyze_sentiment(text):
         if text is None:
             return 'neutral'  # or any default sentiment you prefer
@@ -515,7 +572,7 @@ if st.button("Get Stock Identifier"):
     # Calculate the mean score
     mean_score = df_with_score.agg({'score': 'mean'}).collect()[0][0]
     st.write(f"Mean Score: {mean_score}")
-    if mean_score > 0.3:
+    if mean_score > 0.5:
         st.write("Buy")
     else:
         st.write("Sell")
