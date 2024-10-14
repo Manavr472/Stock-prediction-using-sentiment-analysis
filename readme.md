@@ -1,10 +1,10 @@
 Here's a template for a README file that outlines your project, its features, setup instructions, and usage:
 
-# Integrative Stock Trend Predictor
+# Stock-prediction-using-sentiment-analysis
 
 ## Overview
 
-The **Integrative Stock Trend Predictor** is a machine learning application designed to predict stock prices using historical data. This project leverages XGBoost, a powerful gradient boosting framework, to analyze trends in stock prices and make predictions based on datetime features.
+The **Stock-prediction-using-sentiment-analysis** is a machine learning application designed to predict stock prices using historical data. This project leverages XGBoost, a powerful gradient boosting framework, to analyze trends in stock prices and make predictions based on datetime features.
 
 ## Features
 
@@ -25,7 +25,7 @@ The **Integrative Stock Trend Predictor** is a machine learning application desi
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/integrative-stock-trend-predictor.git
+   git clone https://github.com/your-username/Stock-prediction-using-sentiment-analysis.git
    cd integrative-stock-trend-predictor
    ```
 
@@ -42,14 +42,12 @@ The **Integrative Stock Trend Predictor** is a machine learning application desi
 
 ## Usage
 
-1. **Place your stock data CSV files in the `archive` folder.** Ensure the files have the following columns: `datetime`, `symbol`, `open`, `high`, `low`, `close`, `volume`, etc.
-
-2. **Run the Streamlit application:**
+1. **Run the Streamlit application:**
    ```bash
    streamlit run app.py
    ```
 
-3. **Interact with the application:**
+2. **Interact with the application:**
    - Select a stock from the dropdown menu.
    - Visualize the historical stock trends.
    - Click on the "Predict Price" button to see the predicted end-of-day price for the selected stock.
